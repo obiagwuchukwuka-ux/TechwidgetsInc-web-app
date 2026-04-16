@@ -1,0 +1,46 @@
+name: CI/CD Pipeline
+
+# Trigger the workflow on push to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # GitHub provides Ubuntu runners by default
+
+    steps:
+      # Step 1: Checkout code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Node.js (or other language/stack you're using)
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # Replace with your Node.js version or other stack you're using
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install  # For Node.js apps. Replace if you're using Python, Ruby, etc.
+
+      # Step 4: Run tests (if applicable)
+      - name: Run tests
+        run: npm test  # Replace with your testing command (for Node.js apps)
+
+      # Step 5: Build the application (optional, for more advanced setups)
+      - name: Build app
+        run: npm run build  # Replace with your build command if needed (e.g., Webpack, React build, etc.)
+
+      # Step 6: Deploy to EC2 (Deployment step)
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_PRIVATE_KEY }} ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            cd /var/www/techwidgets
+            git pull origin main  # Pull latest changes from GitHub
+            sudo systemctl restart nginx  # Restart Nginx to apply changes
+          EOF
+        env:
+          EC2_PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
